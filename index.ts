@@ -20,12 +20,13 @@ const client = new tmi.Client({
     channels: [process.env.CHANNEL]
 });
 
-const data: DataEntry[] = loadData("data.json")
+const data: Data = loadData();
 const ids: string[] = [];
-for (const entry of data) {
-    if (entry.enabled) {
-        ids.push(entry.id);
-    } else if (entry.enabled === undefined) {
+for (const id in data) {
+    if (data[id].enabled) {
+        ids.push(id);
+    } else if (data[id].enabled === undefined) {
+        console.log(data[id])
         // todo send to discord to approve
     }
 }
@@ -41,7 +42,7 @@ client.on('message', (channel, tags, message, self) => {
             const args: string[] = message.split(" ");
             if (message.startsWith("!blacklist ") && args.length >= 2) {
                 const name = args[1];
-                const data = loadData("blacklist.json");
+                const data = loadBlacklist();
                 const blacklist = data.blacklist;
                 if (!blacklist.includes(name.toLowerCase())) {
                     blacklist.push(name.toLowerCase());
@@ -50,7 +51,7 @@ client.on('message', (channel, tags, message, self) => {
                 }
             } else if (message.startsWith("!pardon ") && args.length >= 2) {
                 const name = args[1];
-                const data = loadData("blacklist.json");
+                const data = loadBlacklist();
                 const blacklist = data.blacklist;
                 const index = blacklist.indexOf(name.toLowerCase());
                 if (index > -1) {
@@ -63,22 +64,20 @@ client.on('message', (channel, tags, message, self) => {
 
         const regex = /(PepoG|NOTED)/g;
         if (regex.test(message)) {
-            if (message.replace(regex, "").trim() == "") {
-                const blacklistData = loadData("blacklist.json");
+            if (message.replace(regex, "").trim() !== "") {
+                const blacklistData = loadBlacklist();
                 const blacklist = blacklistData.blacklist;
 
                 if (blacklist.includes(user.toLowerCase())) {
                     return;
                 }
 
-                const data: DataEntry[] = loadData("data.json");
-                const date = new Date(Date.now());
-                data.push({
-                    "id": uuid.v4(),
+                const data: object = loadData();
+                data[uuid.v4()] = {
                     "user": user,
-                    "timestamp": date.toString(),
+                    "timestamp": new Date().toISOString(),
                     "note": message as string
-                });
+                };
                 fs.writeFileSync(__dirname + "/data/data.json", JSON.stringify(data));
             } else {
                 client.say(channel, `PepoRage ${user}`);
@@ -87,8 +86,8 @@ client.on('message', (channel, tags, message, self) => {
     }
 
     if (message.trim() === "!note" && lastUsed + 120 * 1000 <= Date.now()) {
-        const data = loadData("data.json");
-        const object = data[Math.floor(Math.random() * data.length)];
+        const data = loadData();
+        const object = data[ids[Math.floor(Math.random() * ids.length)]];
         const date = new Date(object.timestamp);
         // client.say(channel, `${object.user} hat sich am ${n(date.getDate())}.${n(date.getMonth() + 1)}.${date.getFullYear()} folgendes notiert: ${object.note.replace("PepoG", "").replace("NOTED", "")}`);
         client.say(channel, 'Die Notes wurden eingestellt, trotzdem danke für dein Interesse :)');
@@ -97,19 +96,26 @@ client.on('message', (channel, tags, message, self) => {
     }
 });
 
-function loadData(file: string) {
-    const buf: Buffer = fs.readFileSync(__dirname + '/data/' + file);
-    return JSON.parse(buf.toString())
+function loadData(): Data {
+    const buf: Buffer = fs.readFileSync(__dirname + '/data/data.json');
+    return JSON.parse(buf.toString());
+}
+
+function loadBlacklist() {
+    const buf: Buffer = fs.readFileSync(__dirname + '/data/blacklist.json');
+    return JSON.parse(buf.toString());
 }
 
 function n(n: number) {
     return n > 9 ? "" + n : "0" + n;
 }
 
+type Data = Record<string, DataEntry>;
+
 interface DataEntry {
-    id: string
-    user: string
-    timestamp: string
-    note: string
-    enabled?: boolean
+    user: string;
+    user_id: number;
+    timestamp: string;
+    note: string;
+    enabled?: boolean;
 }
