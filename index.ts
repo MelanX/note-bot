@@ -53,14 +53,15 @@ client.on('message', (channel, tags, message, self) => {
         }
 
         const regex = /(PepoG|NOTED)/g;
-        if (regex.test(message) && message.replace(regex, "").trim().length > 5) {
-            const blacklistFile = fs.readFileSync(__dirname + "/data/blacklist.json");
-            const blacklistData = JSON.parse(blacklistFile.toString());
-            const blacklist = blacklistData.blacklist;
+        if (regex.test(message)) {
+            if (message.replace(regex, "").trim().length > 5) {
+                const blacklistFile = fs.readFileSync(__dirname + "/data/blacklist.json");
+                const blacklistData = JSON.parse(blacklistFile.toString());
+                const blacklist = blacklistData.blacklist;
 
-            if (blacklist.includes(user.toLowerCase())) {
-                return;
-            }
+                if (blacklist.includes(user.toLowerCase())) {
+                    return;
+                }
 
             const file = fs.readFileSync(__dirname + "/data/data.json");
             const data = JSON.parse(file.toString());
@@ -73,6 +74,18 @@ client.on('message', (channel, tags, message, self) => {
             fs.writeFileSync(__dirname + "/data/data.json", JSON.stringify(data));
         } else {
             client.say(channel, `PepoRage ${user}`);
+                const file = fs.readFileSync(__dirname + "/data/data.json");
+                const data = JSON.parse(file.toString());
+                const date = new Date(Date.now());
+                data.push({
+                    "user": user,
+                    "timestamp": date,
+                    "note": message as string
+                });
+                fs.writeFileSync(__dirname + "/data/data.json", JSON.stringify(data));
+            } else {
+                client.say(channel, `PepoRage ${user}`);
+            }
         }
     }
 
