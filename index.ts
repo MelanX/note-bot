@@ -1,6 +1,7 @@
 import * as tmi from 'tmi.js';
 import * as fs from "fs";
 import * as uuid from "uuid";
+import {updateJsonFile} from "./utils";
 
 require('dotenv').config({path: 'twitch.env'});
 
@@ -21,16 +22,23 @@ const client = new tmi.Client({
 });
 
 const data: Data = loadData();
-const ids: string[] = [];
+const note_ids: string[] = [];
+const user_ids: number[] = [];
 for (const id in data) {
-    if (data[id].enabled) {
-        ids.push(id);
-    } else if (data[id].enabled === undefined) {
-        console.log(data[id])
+    let entry = data[id];
+    if (entry.user_id && !user_ids.includes(entry.user_id)) {
+        user_ids.push(entry.user_id);
+    }
+    if (entry.enabled) {
+        note_ids.push(id);
+    } else if (entry.enabled === undefined) {
+        console.log(entry);
         // todo send to discord to approve
     }
 }
 
+// noinspection JSIgnoredPromiseFromCall
+updateJsonFile(user_ids);
 client.connect().catch(console.error);
 
 client.on('message', (channel, tags, message, self) => {
@@ -38,6 +46,7 @@ client.on('message', (channel, tags, message, self) => {
     // check the bots custom commands
     if (channel === twitchChannel) {
         const user: string = tags["display-name"];
+        const userId: number = Number.parseInt(tags["user-id"]);
         if (user.toLowerCase() === "melanx") {
             const args: string[] = message.split(" ");
             if (message.startsWith("!blacklist ") && args.length >= 2) {
@@ -72,9 +81,10 @@ client.on('message', (channel, tags, message, self) => {
                     return;
                 }
 
-                const data: object = loadData();
+                const data: Data = loadData();
                 data[uuid.v4()] = {
                     "user": user,
+                    "user_id": userId,
                     "timestamp": new Date().toISOString(),
                     "note": message as string
                 };
@@ -87,10 +97,10 @@ client.on('message', (channel, tags, message, self) => {
 
     if (message.trim() === "!note" && lastUsed + 120 * 1000 <= Date.now()) {
         const data = loadData();
-        const object = data[ids[Math.floor(Math.random() * ids.length)]];
+        const object = data[note_ids[Math.floor(Math.random() * note_ids.length)]];
         const date = new Date(object.timestamp);
-        // client.say(channel, `${object.user} hat sich am ${n(date.getDate())}.${n(date.getMonth() + 1)}.${date.getFullYear()} folgendes notiert: ${object.note.replace("PepoG", "").replace("NOTED", "")}`);
-        client.say(channel, 'Die Notes wurden eingestellt, trotzdem danke für dein Interesse :)');
+        client.say(channel, `${username(object.user_id, object.user)} hat sich am ${n(date.getDate())}.${n(date.getMonth() + 1)}.${date.getFullYear()} folgendes notiert: ${object.note.replace("PepoG", "").replace("NOTED", "")}`);
+        // client.say(channel, 'Die Notes wurden eingestellt, trotzdem danke für dein Interesse :)');
 
         lastUsed = Date.now();
     }
@@ -104,6 +114,12 @@ function loadData(): Data {
 function loadBlacklist() {
     const buf: Buffer = fs.readFileSync(__dirname + '/data/blacklist.json');
     return JSON.parse(buf.toString());
+}
+
+function username(id: number|string, fallback?: string): string {
+    const buf: Buffer = fs.readFileSync(__dirname + '/data/user_ids.json');
+    const name = JSON.parse(buf.toString())[id.toString()];
+    return name ? name : fallback;
 }
 
 function n(n: number) {
