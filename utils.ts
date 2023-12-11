@@ -1,9 +1,10 @@
 import axios from 'axios';
 import * as fs from 'fs';
+import {checkMessage, discord} from "./discord";
 
 require('dotenv').config({path: 'twitch.env'});
 
-async function getTwitchUsernames(userIds: string[]|number[]): Promise<{ [userId: string]: string | null }> {
+async function getTwitchUsernames(userIds: string[] | number[]): Promise<{ [userId: string]: string | null }> {
     const baseUrl = 'https://api.twitch.tv/helix/users';
     const headers = {
         'Client-ID': process.env.TWITCH_CLIENT_ID,
@@ -13,10 +14,10 @@ async function getTwitchUsernames(userIds: string[]|number[]): Promise<{ [userId
     const usernames: { [userId: string]: string | null } = {};
 
     for (const userId of userIds.sort()) {
-        const params = { id: userId };
+        const params = {id: userId};
 
         try {
-            const response = await axios.get(baseUrl, { params, headers });
+            const response = await axios.get(baseUrl, {params, headers});
 
             if (response.status === 200) {
                 const data = response.data;
@@ -38,7 +39,7 @@ async function getTwitchUsernames(userIds: string[]|number[]): Promise<{ [userId
     return usernames;
 }
 
-export async function updateJsonFile(userIds: string[]|number[]): Promise<void> {
+export async function updateJsonFile(userIds: string[] | number[]): Promise<void> {
     const buf: Buffer = fs.readFileSync(__dirname + '/data/user_ids.json');
     const data = JSON.parse(buf.toString());
     let lastUpdate = data["updated_on"];
@@ -67,4 +68,73 @@ export async function updateJsonFile(userIds: string[]|number[]): Promise<void> 
     } catch (error) {
         console.error('Error:', error.message);
     }
+}
+
+function getApprovalData() {
+    const buf: Buffer = fs.readFileSync(__dirname + '/data/waiting_for_approval.json');
+    return JSON.parse(buf.toString());
+}
+
+function setApprovalData(data) {
+    fs.writeFileSync(__dirname + '/data/waiting_for_approval.json', JSON.stringify(data));
+}
+
+export async function checkApprovals() {
+    const approvalData = getApprovalData();
+    for (const msgId in approvalData) {
+        await checkMessage(msgId);
+    }
+}
+
+export function waitingForApproval(id: string, uuid: string) {
+    const data = getApprovalData();
+    data[id] = uuid;
+    setApprovalData(data);
+}
+
+export function approve(id: string, emote: string) {
+    const approvalData = getApprovalData();
+    const data = loadData();
+    data[approvalData[id]]['enabled'] = emote === '✅';
+    delete approvalData[id];
+    saveData(data);
+    setApprovalData(approvalData);
+}
+
+export function loadData(): Data {
+    const buf: Buffer = fs.readFileSync(__dirname + '/data/data.json');
+    return JSON.parse(buf.toString());
+}
+
+export function saveData(data) {
+    fs.writeFileSync(__dirname + '/data/data.json', JSON.stringify(data));
+}
+
+export function loadBlacklist() {
+    const buf: Buffer = fs.readFileSync(__dirname + '/data/blacklist.json');
+    return JSON.parse(buf.toString());
+}
+
+export function saveBlacklist(data) {
+    fs.writeFileSync(__dirname + '/data/blacklist.json', JSON.stringify(data));
+}
+
+export function username(id: number | string, fallback?: string): string {
+    const buf: Buffer = fs.readFileSync(__dirname + '/data/user_ids.json');
+    const name = JSON.parse(buf.toString())[id.toString()];
+    return name ? name : fallback;
+}
+
+export function n(n: number) {
+    return n > 9 ? "" + n : "0" + n;
+}
+
+export type Data = Record<string, DataEntry>;
+
+export interface DataEntry {
+    user: string;
+    user_id: number;
+    timestamp: string;
+    note: string;
+    enabled?: boolean;
 }
