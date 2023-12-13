@@ -1,7 +1,16 @@
 import * as tmi from 'tmi.js';
 import * as fs from "fs";
 import * as uuid from "uuid";
-import {checkApprovals, Data, loadBlacklist, loadData, n, updateJsonFile, username} from "./utils";
+import {
+    checkApprovals,
+    Data,
+    isWaitingForApproval,
+    loadBlacklist,
+    loadData,
+    n,
+    updateJsonFile,
+    username
+} from "./utils";
 import {registerDiscord, sendMessage} from "./discord";
 
 let lastUsed: number = 1337
@@ -34,7 +43,7 @@ const twitchChannel: string = `#${process.env.CHANNEL.toLowerCase()}`;
         }
         if (entry.enabled) {
             note_ids.push(id);
-        } else if (entry.enabled === undefined) {
+        } else if (entry.enabled === undefined && !isWaitingForApproval(id)) {
             // noinspection JSIgnoredPromiseFromCall
             await sendMessage(id, entry.user, entry.user_id, entry.note, new Date(entry.timestamp))
         }
@@ -74,9 +83,9 @@ const twitchChannel: string = `#${process.env.CHANNEL.toLowerCase()}`;
                 }
             }
 
-            const regex = /(PepoG|NOTED)/g;
+            const regex: RegExp = /(PepoG|NOTED)/g;
             if (regex.test(message)) {
-                if (message.replace(regex, "").trim() !== "") {
+                if (message.replace(/@([a-zA-Z0-9_]+)\s\/(PepoG|NOTED)/g, "").trim() !== "") {
                     const blacklistData = loadBlacklist();
                     const blacklist = blacklistData.blacklist;
 
@@ -94,12 +103,8 @@ const twitchChannel: string = `#${process.env.CHANNEL.toLowerCase()}`;
                         "note": message as string
                     };
                     fs.writeFileSync(__dirname + "/data/data.json", JSON.stringify(data));
-                    const discord = '```' + message + '```\n'
-                        + `User: ${user}\n`
-                        + `User ID: ${userId}\n`
-                        + `UUID: ${id}`;
                     sendMessage(id, user, userId, message, timestamp);
-                } else {
+                } else if (message.replace(regex, "").trim() !== "") {
                     client.say(channel, `PepoRage ${user}`);
                 }
             }

@@ -92,6 +92,17 @@ export function waitingForApproval(id: string, uuid: string) {
     setApprovalData(data);
 }
 
+export function isWaitingForApproval(uuid: string) {
+    const data = getApprovalData();
+    for (const msgId in data) {
+        if (data[msgId] == uuid) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 export function approve(id: string, emote: string) {
     const approvalData = getApprovalData();
     const data = loadData();
