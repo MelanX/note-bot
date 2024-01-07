@@ -3,7 +3,7 @@ import * as fs from "fs";
 import * as uuid from "uuid";
 import {
     checkApprovals,
-    Data,
+    Data, DataEntry, getNoteFromList,
     isWaitingForApproval,
     loadBlacklist,
     loadData,
@@ -35,6 +35,7 @@ const twitchChannel: string = `#${process.env.CHANNEL.toLowerCase()}`;
 
     const data: Data = loadData();
     const note_ids: string[] = [];
+    const note_ids_by_year = {};
     const user_ids: number[] = [];
     for (const id in data) {
         let entry = data[id];
@@ -43,6 +44,13 @@ const twitchChannel: string = `#${process.env.CHANNEL.toLowerCase()}`;
         }
         if (entry.enabled) {
             note_ids.push(id);
+            const year = new Date(entry.timestamp).getFullYear().toString();
+
+            if (!note_ids_by_year[year]) {
+                note_ids_by_year[year] = [];
+            }
+
+            note_ids_by_year[year].push(id);
         } else if (entry.enabled === undefined && !isWaitingForApproval(id)) {
             // noinspection JSIgnoredPromiseFromCall
             await sendMessage(id, entry.user, entry.user_id, entry.note, new Date(entry.timestamp))
@@ -83,9 +91,31 @@ const twitchChannel: string = `#${process.env.CHANNEL.toLowerCase()}`;
                 }
             }
 
+            const noteCommand: boolean = message.split(" ")[0].toLowerCase() == "!note";
+            const year: number = parseInt(message.split(" ")[1], 10);
+            if (noteCommand && lastUsed + 120 * 1000 <= Date.now()) {
+                let note: DataEntry;
+                if (!isNaN(year)) {
+                    const notes: string[] = note_ids_by_year[year.toString()];
+                    note = getNoteFromList(notes);
+                    if (note === null) {
+                        client.say(channel, `@${user} Es gibt keine Notes für das Jahr ${year}. Versuche ein anderes!`);
+                        return;
+                    }
+                } else {
+                    note = getNoteFromList(note_ids);
+                }
+
+                const date = new Date(note.timestamp);
+                client.say(channel, `${username(note.user_id, note.user)} hat sich am ${n(date.getDate())}.${n(date.getMonth() + 1)}.${date.getFullYear()} folgendes notiert: ${note.note.replace("PepoG", "").replace("NOTED", "")}`);
+
+                lastUsed = Date.now();
+                return;
+            }
+
             const regex: RegExp = /(PepoG|NOTED)/g;
             if (regex.test(message)) {
-                if (message.replace(/@([a-zA-Z0-9_]+)\s\/(PepoG|NOTED)/g, "").trim() !== "") {
+                if (message.replace(/@([a-zA-Z0-9_]+)\s(PepoG|NOTED)|(PepoG|NOTED)/g, "").trim() !== "") {
                     const blacklistData = loadBlacklist();
                     const blacklist = blacklistData.blacklist;
 
@@ -108,16 +138,6 @@ const twitchChannel: string = `#${process.env.CHANNEL.toLowerCase()}`;
                     client.say(channel, `PepoRage ${user}`);
                 }
             }
-        }
-
-        if (message.trim() === "!note" && lastUsed + 120 * 1000 <= Date.now()) {
-            const data = loadData();
-            const object = data[note_ids[Math.floor(Math.random() * note_ids.length)]];
-            const date = new Date(object.timestamp);
-            client.say(channel, `${username(object.user_id, object.user)} hat sich am ${n(date.getDate())}.${n(date.getMonth() + 1)}.${date.getFullYear()} folgendes notiert: ${object.note.replace("PepoG", "").replace("NOTED", "")}`);
-            // client.say(channel, 'Die Notes wurden eingestellt, trotzdem danke für dein Interesse :)');
-
-            lastUsed = Date.now();
         }
     });
 })();

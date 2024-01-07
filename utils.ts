@@ -4,6 +4,15 @@ import {checkMessage, discord} from "./discord";
 
 require('dotenv').config({path: 'twitch.env'});
 
+
+export function getNoteFromList(noteIds: string[]): DataEntry {
+    if (noteIds === undefined) {
+        return null;
+    }
+
+    const data = loadData();
+    return data[noteIds[Math.floor(Math.random() * noteIds.length)]];
+}
 async function getTwitchUsernames(userIds: string[] | number[]): Promise<{ [userId: string]: string | null }> {
     const baseUrl = 'https://api.twitch.tv/helix/users';
     const headers = {
