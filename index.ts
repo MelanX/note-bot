@@ -2,8 +2,9 @@ import * as tmi from 'tmi.js';
 import * as fs from "fs";
 import * as uuid from "uuid";
 import {
+    addNote,
     checkApprovals,
-    Data, DataEntry, getNoteFromList,
+    Data, DataEntry, getNote,
     isWaitingForApproval,
     loadBlacklist,
     loadData,
@@ -34,8 +35,7 @@ const twitchChannel: string = `#${process.env.CHANNEL.toLowerCase()}`;
     });
 
     const data: Data = loadData();
-    const note_ids: string[] = [];
-    const note_ids_by_year = {};
+
     const user_ids: number[] = [];
     for (const id in data) {
         let entry = data[id];
@@ -43,14 +43,7 @@ const twitchChannel: string = `#${process.env.CHANNEL.toLowerCase()}`;
             user_ids.push(entry.user_id);
         }
         if (entry.enabled) {
-            note_ids.push(id);
-            const year = new Date(entry.timestamp).getFullYear().toString();
-
-            if (!note_ids_by_year[year]) {
-                note_ids_by_year[year] = [];
-            }
-
-            note_ids_by_year[year].push(id);
+            addNote(id, entry);
         } else if (entry.enabled === undefined && !isWaitingForApproval(id)) {
             // noinspection JSIgnoredPromiseFromCall
             await sendMessage(id, entry.user, entry.user_id, entry.note, new Date(entry.timestamp))
@@ -94,16 +87,10 @@ const twitchChannel: string = `#${process.env.CHANNEL.toLowerCase()}`;
             const noteCommand: boolean = message.split(" ")[0].toLowerCase() == "!note";
             const year: number = parseInt(message.split(" ")[1], 10);
             if (noteCommand && lastUsed + 120 * 1000 <= Date.now()) {
-                let note: DataEntry;
-                if (!isNaN(year)) {
-                    const notes: string[] = note_ids_by_year[year.toString()];
-                    note = getNoteFromList(notes);
-                    if (note === null) {
-                        client.say(channel, `@${user} Es gibt keine Notes für das Jahr ${year}. Versuche ein anderes!`);
-                        return;
-                    }
-                } else {
-                    note = getNoteFromList(note_ids);
+                let note = getNote(year);
+                if (note === null) {
+                    client.say(channel, `@${user} Es gibt keine Notes für das Jahr ${year}. Versuche ein anderes!`);
+                    return;
                 }
 
                 const date = new Date(note.timestamp);

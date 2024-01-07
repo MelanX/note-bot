@@ -4,14 +4,33 @@ import {checkMessage, discord} from "./discord";
 
 require('dotenv').config({path: 'twitch.env'});
 
+const note_ids: string[] = [];
+const note_ids_by_year = {};
 
-export function getNoteFromList(noteIds: string[]): DataEntry {
-    if (noteIds === undefined) {
-        return null;
+export function addNote(id: string, entry: DataEntry) {
+    note_ids.push(id);
+    const year = new Date(entry.timestamp).getFullYear().toString();
+
+    if (!note_ids_by_year[year]) {
+        note_ids_by_year[year] = [];
+    }
+
+    note_ids_by_year[year].push(id);
+}
+
+export function getNote(year: number): DataEntry {
+    let notes: string[];
+    if (!isNaN(year)) {
+        notes = note_ids_by_year[year.toString()];
+        if (notes === undefined) {
+            return null;
+        }
+    } else {
+        notes = note_ids;
     }
 
     const data = loadData();
-    return data[noteIds[Math.floor(Math.random() * noteIds.length)]];
+    return data[notes[Math.floor(Math.random() * notes.length)]];
 }
 async function getTwitchUsernames(userIds: string[] | number[]): Promise<{ [userId: string]: string | null }> {
     const baseUrl = 'https://api.twitch.tv/helix/users';
@@ -115,8 +134,10 @@ export function isWaitingForApproval(uuid: string) {
 export function approve(id: string, emote: string) {
     const approvalData = getApprovalData();
     const data = loadData();
-    data[approvalData[id]]['enabled'] = emote === '✅';
+    let entry = data[approvalData[id]];
+    entry['enabled'] = emote === '✅';
     delete approvalData[id];
+    addNote(id, entry);
     saveData(data);
     setApprovalData(approvalData);
 }
