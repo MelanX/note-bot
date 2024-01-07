@@ -48,14 +48,30 @@ export async function registerDiscord() {
     });
 
     discord.on('messageCreate', async (message: Message) => {
-        if (message.author !== discord.user && message.content === '!clear') {
+        const args = message.content.split(" ");
+
+        if (message.author !== discord.user && args[0] === '!clear') {
             let dm: DMChannel = await discord.channels.fetch('1183827465102163968') as DMChannel;
-            dm.messages.fetch().then((results) => {
+            dm.messages.fetch().then(async (results) => {
                 const botMessages = results.filter(msg => msg.author.bot);
-                botMessages.forEach(msg => {
-                    dm.messages.delete(msg.id);
-                })
-            })
+
+                if (args[1] !== undefined) {
+                    const messageIdToDelete = args[1];
+                    const messageToDelete = botMessages.find(msg => msg.id === messageIdToDelete);
+
+                    if (messageToDelete) {
+                        await dm.messages.delete(messageToDelete.id);
+                    } else {
+                        await message.react('❌');
+                    }
+
+                    return;
+                }
+
+                botMessages.forEach(async (msg) => {
+                    await dm.messages.delete(msg.id);
+                });
+            });
         }
     });
 }
