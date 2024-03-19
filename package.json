@@ -14,7 +14,6 @@
     "axios": "^1.6.2",
     "discord.js": "^14.14.1",
     "dotenv": "^16.0.0",
-    "fastest-levenshtein": "^1.0.12",
     "request": "^2.88.2",
     "tmi": "^2.0.0",
     "tmi.js": "^1.8.5",

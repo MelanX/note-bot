@@ -4,7 +4,7 @@ import * as uuid from "uuid";
 import {
     addNote,
     checkApprovals,
-    Data, DataEntry, getNote,
+    Data, getNote,
     isWaitingForApproval,
     loadBlacklist,
     loadData,
@@ -60,7 +60,8 @@ const twitchChannel: string = `#${process.env.CHANNEL.toLowerCase()}`;
         if (channel === twitchChannel) {
             const user: string = tags["display-name"];
             const userId: number = Number.parseInt(tags["user-id"]);
-            if (user.toLowerCase() === "melanx") {
+            const isMelanX: boolean = user.toLowerCase() === "melanx";
+            if (isMelanX) {
                 const args: string[] = message.split(" ");
                 if (message.startsWith("!blacklist ") && args.length >= 2) {
                     const name = args[1];
@@ -86,7 +87,7 @@ const twitchChannel: string = `#${process.env.CHANNEL.toLowerCase()}`;
 
             const noteCommand: boolean = message.split(" ")[0].toLowerCase() == "!note";
             const year: number = parseInt(message.split(" ")[1], 10);
-            if (noteCommand && lastUsed + 120 * 1000 <= Date.now()) {
+            if (noteCommand && (lastUsed + 120 * 1000 <= Date.now() || isMelanX)) {
                 let note = getNote(year);
                 if (note === null) {
                     client.say(channel, `@${user} Es gibt keine Notes für das Jahr ${year}. Versuche ein anderes!`);
