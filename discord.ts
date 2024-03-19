@@ -77,10 +77,16 @@ export async function registerDiscord() {
 }
 
 export async function sendMessage(uuid: string, user: string, userId: number, note: string, timestamp: Date) {
+    let title = note;
+    let description = `By ${user} (${userId})\nID ${uuid}`;
+    if (note.length > 256) {
+        title = note.substring(0, 250) + ' [...]';
+        description = `${note}\n\n${description}`;
+    }
     let embed = new EmbedBuilder()
         .setColor('Green')
-        .setTitle(note)
-        .setDescription(`By ${user} (${userId})\nID ${uuid}`)
+        .setTitle(title)
+        .setDescription(description)
         .setTimestamp(timestamp);
     const msg = await dmChannel.send({embeds: [embed]});
     await msg.react('✅');
