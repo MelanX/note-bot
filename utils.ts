@@ -1,6 +1,6 @@
 import axios from 'axios';
 import * as fs from 'fs';
-import {checkMessage, discord} from "./discord";
+import {checkMessage} from "./discord";
 
 require('dotenv').config({path: 'twitch.env'});
 
@@ -22,14 +22,21 @@ export function getNote(year: number): DataEntry {
     let notes: string[];
     if (!isNaN(year)) {
         notes = note_ids_by_year[year.toString()];
-        if (notes === undefined) {
+        if (notes === undefined || notes.length === 0) {
             return null;
         }
     } else {
         notes = note_ids;
+        if (notes.length === 0) {
+            return null;
+        }
+    }
+    const data = loadData();
+
+    if (Object.keys(data).length === 0) {
+        return null;
     }
 
-    const data = loadData();
     return data[notes[Math.floor(Math.random() * notes.length)]];
 }
 async function getTwitchUsernames(userIds: string[] | number[]): Promise<{ [userId: string]: string | null }> {
