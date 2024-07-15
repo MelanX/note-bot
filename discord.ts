@@ -37,7 +37,7 @@ export async function registerDiscord() {
     console.log("Connected to discord");
 
     discord = client;
-    dmChannel = await discord.channels.fetch('1183827465102163968') as DMChannel;
+    dmChannel = await discord.channels.fetch(process.env.DM_CHANNEL_ID) as DMChannel;
 
     discord.on('messageReactionAdd', async (reaction: MessageReaction, user: User) => {
         if (user.bot) {
@@ -51,7 +51,7 @@ export async function registerDiscord() {
         const args = message.content.split(" ");
 
         if (message.author !== discord.user && args[0] === '!clear') {
-            let dm: DMChannel = await discord.channels.fetch('1183827465102163968') as DMChannel;
+            let dm: DMChannel = await discord.channels.fetch(process.env.DM_CHANNEL_ID) as DMChannel;
             dm.messages.fetch().then(async (results) => {
                 const botMessages = results.filter(msg => msg.author.bot);
 
