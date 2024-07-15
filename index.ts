@@ -122,8 +122,6 @@ const twitchChannel: string = `#${process.env.CHANNEL.toLowerCase()}`;
                     };
                     fs.writeFileSync(__dirname + "/data/data.json", JSON.stringify(data));
                     sendMessage(id, user, userId, message, timestamp);
-                } else if (message.replace(regex, "").trim() !== "") {
-                    client.say(channel, `PepoRage ${user}`);
                 }
             }
         }
